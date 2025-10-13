@@ -5,3 +5,9 @@ class StudentInput(BaseModel):
     name:str
     age:int
     course:str
+
+class UserInput(BaseModel):
+    username:str
+    password:str
+
+    

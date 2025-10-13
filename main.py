@@ -1,9 +1,10 @@
 from fastapi import FastAPI,Depends,HTTPException,status
 from sqlmodel import Session,select
 from database import create_db_and_tables,get_session
-from schemas import StudentInput
-from models import Student
+from schemas import StudentInput,UserInput
+from models import Student,User
 from sqlalchemy import func
+from auth import get_password_hash,verify_password,create_access_token,get_current_user
 
 app = FastAPI(title = "demo")
 
@@ -14,6 +15,33 @@ def on_startup():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+#authentication-simple(authToken)
+
+
+@app.post("/register")
+def register_user(user: UserInput, session: Session = Depends(get_session)):
+    existing = session.exec(select(User).where(User.username == user.username)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    hashed_pw = get_password_hash(user.password)
+    db_user = User(username=user.username, password=hashed_pw)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return {"message": "User registered"}
+
+
+
+@app.post("/login")
+def login_user(user: UserInput, session: Session = Depends(get_session)):
+    db_user = session.exec(select(User).where(User.username == user.username)).first()
+    if not db_user or not verify_password(user.password, db_user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token({"sub": user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+
 
 @app.post('/student_create')
 def create_student_data(student:StudentInput ,session:Session=Depends(get_session)):
@@ -69,7 +97,7 @@ def group_by_age(session:Session=Depends(get_session)):
     results=session.exec(statement).all()
     return [{"age":age,"count":count}for age,count in results]
 
-#authentication-simple(authToken)
+
 
 #decorator and Generators (with implementation)
 

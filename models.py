@@ -10,3 +10,9 @@ class Student(SQLModel,table=True):
 
     course:str
     
+class User(SQLModel,table=True):
+
+    id:int=Field(default=None,primary_key=True)
+
+    username:str
+    password:str
