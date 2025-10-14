@@ -17,20 +17,17 @@ def health_check():
     return {"status": "ok"}
 #authentication-simple(authToken)
 
-
 @app.post("/register")
 def register_user(user: UserInput, session: Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.username == user.username)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already taken")
-    hashed_pw = get_password_hash(user.password)
-    db_user = User(username=user.username, password=hashed_pw)
+    # hashed_pw = get_password_hash(user.password)
+    db_user = User(username=user.username, password=get_password_hash(user.password))
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
     return {"message": "User registered"}
-
-
 
 @app.post("/login")
 def login_user(user: UserInput, session: Session = Depends(get_session)):
@@ -39,9 +36,6 @@ def login_user(user: UserInput, session: Session = Depends(get_session)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
-
-
-
 
 @app.post('/student_create')
 def create_student_data(student:StudentInput ,session:Session=Depends(get_session)):
@@ -70,7 +64,6 @@ def create_student_data(student:StudentInput ,session:Session=Depends(get_sessio
         raise
 
 @app.get('/students')
-
 def get_students(session:Session=Depends(get_session)):
     print("DEBUG: GET /students called")
     students=session.exec(select(Student)).all()
@@ -81,7 +74,6 @@ def get_students(session:Session=Depends(get_session)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No students found")
 
     return {"count":len(students),"students":students}
-
 
 #group by course
 @app.get('/stats/course')
@@ -98,13 +90,50 @@ def group_by_age(session:Session=Depends(get_session)):
     return [{"age":age,"count":count}for age,count in results]
 
 
-
 #decorator and Generators (with implementation)
 
+#generator:it is a lazy list - it produce values one by one instead of storing everythig in a memory.Core concept
+#behind generator is that when we create normal list or loop,all elements are created and stored in memory at once
+#whereas using generator nothing get stored it calculate one value produce(yield) it and forgets it(Thus it is very memory efficient)
+
+def user_generator():
+
+    users=['John','Ron',"Joy"]
+
+    for user in users:
+
+        yield {"name":user}
+
+@app.get("/users")
+def get_users():
+
+    return list(user_generator())
+
+#decorators:a decorator lets you add functionality to existing functions without changing their code
+def my_decorator(func):
+    def wrapper():
+
+        print("before function")
+        func()
+        print("after function")
+    return wrapper  
+
+@my_decorator
+def say_hello():
+    print("hello")
+
+say_hello()
+
+
+
+
+
+
+
 #pagination
-
+# Pagination means splitting large results into smaller pages
 #memory leaks and garbage collector in python
-
+# A memory leak happens when your program keeps using memory but never frees it, even after it’s no longer needed.
 #list comprehension
 
 #orm
