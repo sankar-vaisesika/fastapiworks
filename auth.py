@@ -1,48 +1,72 @@
-from jose import JWTError,jwt
+from jose import JWTError, jwt         # Handling JWTs (encoding, decoding, and error management).
 
-from fastapi import HTTPException,status,Depends
+from fastapi import HTTPException, status, Depends  # FastAPI core utilities for raising exceptions, HTTP status codes, and dependency injection.
 
-from sqlmodel import Session,select
+from sqlmodel import Session, select   # Database interaction (querying the User model).
 
-from models import User 
+from models import User                # User model to check credentials
 
-from database import get_session
+from database import get_session       # get DB session
 
-from passlib.context import CryptContext
+from passlib.context import CryptContext  # built-in password hashing utilities
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta # for token expiry management
 
-from fastapi.security import OAuth2PasswordBearer
-import bcrypt
+from fastapi.security import OAuth2PasswordBearer  # token-based authentication system
 
-config = bcrypt.gensalt()
+import bcrypt                           # A robust and modern password hashing library.
 
-SECRET_KEY="123454477463543"
 
-ALGORITHM="HS256"
+# -------------------------------
+# CONFIGURATION CONSTANTS
+# -------------------------------
+SECRET_KEY = "123454477463543"        # Secret key to sign JWT tokens
+ALGORITHM = "HS256"                   # Hashing algorithm for JWT (HS256 = HMAC-SHA256)
+ACCESS_TOKEN_EXPIRE_MINUTES = 60      # Token expires after 60 minutes
 
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
+# -------------------------------
+# PASSWORD HASHING CONFIG
+# -------------------------------
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
+# bcrypt salt (used to add randomness to hashing)
+config = bcrypt.gensalt()
+
+# -------------------------------
+# PASSWORD UTILS
+# -------------------------------
 def get_password_hash(password: str) -> str:
-    # bcrypt accepts up to 72 bytes. Ensure it's encoded safely.
+    """
+    Hash the password securely using bcrypt.
+    bcrypt accepts up to 72 bytes, so we encode safely.
+    
+    """    
     # password = password.encode("utf-8")[:72]
     return bcrypt.hashpw(password.encode('utf-8'), config)
     # print("DEBUG: Password length =", len(password))
     # return pwd_context.hash(password)
 
 def verify_password(plain, hashed):
+    """Verify if the provided plain password matches the stored hash."""
+
     return pwd_context.verify(plain, hashed)
 
+# -------------------------------
+# JWT (JSON Web Token) UTILS
+# -------------------------------
 def create_access_token(data: dict):
+    """Generate a JWT access token with expiration time."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
+    """
+    Decode the JWT token and return the current user.
+    Raises an exception if token is invalid or expired.
+    """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")

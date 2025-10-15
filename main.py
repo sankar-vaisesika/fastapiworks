@@ -5,20 +5,37 @@ from schemas import StudentInput,UserInput
 from models import Student,User
 from sqlalchemy import func
 from auth import get_password_hash,verify_password,create_access_token,get_current_user
+# -------------------------------
+# FASTAPI APP INITIALIZATION
+# -------------------------------
+app = FastAPI(title = "Demo")
 
-app = FastAPI(title = "demo")
-
+# -------------------------------
+# DATABASE INITIALIZATION
+# -------------------------------
 @app.on_event('startup')
 def on_startup():
+    """Automatically create tables when the app starts."""
     create_db_and_tables()
 
+
+# -------------------------------
+# BASIC HEALTH CHECK
+# -------------------------------
 @app.get("/health")
 def health_check():
+    """To check if the API is running."""
     return {"status": "ok"}
-#authentication-simple(authToken)
 
+# -------------------------------
+# USER REGISTRATION
+# -------------------------------
 @app.post("/register")
 def register_user(user: UserInput, session: Session = Depends(get_session)):
+    """
+    Register a new user.
+    Checks for duplicate username, then stores a hashed password.
+    """
     existing = session.exec(select(User).where(User.username == user.username)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already taken")
@@ -29,16 +46,29 @@ def register_user(user: UserInput, session: Session = Depends(get_session)):
     session.refresh(db_user)
     return {"message": "User registered"}
 
+# -------------------------------
+# USER LOGIN
+# -------------------------------
 @app.post("/login")
 def login_user(user: UserInput, session: Session = Depends(get_session)):
+    """
+    Verify credentials and return JWT token for authentication.
+    """
     db_user = session.exec(select(User).where(User.username == user.username)).first()
     if not db_user or not verify_password(user.password, db_user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
+# -------------------------------
+# STUDENT CREATION
+# -------------------------------   
 @app.post('/student_create')
 def create_student_data(student:StudentInput ,session:Session=Depends(get_session)):
+    """
+    Create a new student record.
+    Checks for duplicate roll number before inserting.
+    """
     print("DEBUG: Received student:",student.dict())
 
     try:
@@ -61,10 +91,17 @@ def create_student_data(student:StudentInput ,session:Session=Depends(get_sessio
     
     except HTTPException:
 
-        raise
+        raise 
 
+# -------------------------------
+# GET ALL STUDENTS (with optional pagination)
+# -------------------------------
 @app.get('/students')
 def get_students(session:Session=Depends(get_session)):
+    """
+    Fetch all students with pagination.
+    Example: /students?skip=0&limit=5
+    """
     print("DEBUG: GET /students called")
     students=session.exec(select(Student)).all()
     print("DEBUG:Found",len(students),"students")
@@ -75,65 +112,25 @@ def get_students(session:Session=Depends(get_session)):
 
     return {"count":len(students),"students":students}
 
-#group by course
+# -------------------------------
+# GROUP BY COURSE
+# -------------------------------
 @app.get('/stats/course')
 def group_by_course(session:Session=Depends(get_session)):
+    """Return student count grouped by course."""
     statement=select(Student.course,func.count().label("count")).group_by(Student.course)
     results=session.exec(statement).all()
     return [{"course":course,"count":count}for course,count in results]
 
-#group by age
+# -------------------------------
+# GROUP BY AGE
+# ------------------------------
 @app.get('/stats/age')
 def group_by_age(session:Session=Depends(get_session)):
+    """Return student count grouped by age."""
     statement=select(Student.age,func.count().label("count")).group_by(Student.age)
     results=session.exec(statement).all()
     return [{"age":age,"count":count}for age,count in results]
 
 
-#decorator and Generators (with implementation)
 
-#generator:it is a lazy list - it produce values one by one instead of storing everythig in a memory.Core concept
-#behind generator is that when we create normal list or loop,all elements are created and stored in memory at once
-#whereas using generator nothing get stored it calculate one value produce(yield) it and forgets it(Thus it is very memory efficient)
-
-def user_generator():
-
-    users=['John','Ron',"Joy"]
-
-    for user in users:
-
-        yield {"name":user}
-
-@app.get("/users")
-def get_users():
-
-    return list(user_generator())
-
-#decorators:a decorator lets you add functionality to existing functions without changing their code
-def my_decorator(func):
-    def wrapper():
-
-        print("before function")
-        func()
-        print("after function")
-    return wrapper  
-
-@my_decorator
-def say_hello():
-    print("hello")
-
-say_hello()
-
-
-
-
-
-
-
-#pagination
-# Pagination means splitting large results into smaller pages
-#memory leaks and garbage collector in python
-# A memory leak happens when your program keeps using memory but never frees it, even after it’s no longer needed.
-#list comprehension
-
-#orm

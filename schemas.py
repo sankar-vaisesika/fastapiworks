@@ -1,5 +1,9 @@
 from pydantic import BaseModel
 
+# -------------------------------
+# Pydantic Schemas (for input validation)
+# -------------------------------
+
 class StudentInput(BaseModel):
     roll_num:int
     name:str
