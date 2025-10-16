@@ -16,13 +16,19 @@ from fastapi.security import OAuth2PasswordBearer  # token-based authentication 
 
 import bcrypt                           # A robust and modern password hashing library.
 
+from dotenv import load_dotenv
+
+import os
+
+load_dotenv() #reads .env file
+
 
 # -------------------------------
 # CONFIGURATION CONSTANTS
 # -------------------------------
-SECRET_KEY = "123454477463543"        # Secret key to sign JWT tokens
-ALGORITHM = "HS256"                   # Hashing algorithm for JWT (HS256 = HMAC-SHA256)
-ACCESS_TOKEN_EXPIRE_MINUTES = 60      # Token expires after 60 minutes
+SECRET_KEY = os.getenv("SECRET_KEY")      # Secret key to sign JWT tokens
+ALGORITHM =  os.getenv("ALGORITHM", "HS256")                   # Hashing algorithm for JWT (HS256 = HMAC-SHA256)
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))      # Token expires after 60 minutes
 
 # -------------------------------
 # PASSWORD HASHING CONFIG
@@ -31,7 +37,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # bcrypt salt (used to add randomness to hashing)
-config = bcrypt.gensalt()
+# config = bcrypt.gensalt()  
 
 # -------------------------------
 # PASSWORD UTILS
@@ -43,9 +49,9 @@ def get_password_hash(password: str) -> str:
     
     """    
     # password = password.encode("utf-8")[:72]
-    return bcrypt.hashpw(password.encode('utf-8'), config)
+    # return bcrypt.hashpw(password.encode('utf-8'), config)
     # print("DEBUG: Password length =", len(password))
-    # return pwd_context.hash(password)
+    return pwd_context.hash(password)
 
 def verify_password(plain, hashed):
     """Verify if the provided plain password matches the stored hash."""

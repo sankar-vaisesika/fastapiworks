@@ -5,13 +5,13 @@ from sqlmodel import SQLModel,Field
 # -------------------------------
 class Student(SQLModel,table=True):
 
-    roll_num:int=Field(primary_key=True)
+    roll_num:int=Field(primary_key=True,index=True)
 
     name:str
 
     age:int
 
-    course:str
+    course:str=Field(index=True)
 
 # -------------------------------
 # USER MODEL (for authentication)
