@@ -1,25 +1,17 @@
 from jose import JWTError, jwt         # Handling JWTs (encoding, decoding, and error management).
-
 from fastapi import HTTPException, status, Depends  # FastAPI core utilities for raising exceptions, HTTP status codes, and dependency injection.
-
 from sqlmodel import Session, select   # Database interaction (querying the User model).
-
 from models import User                # User model to check credentials
-
 from database import get_session       # get DB session
-
 from passlib.context import CryptContext  # built-in password hashing utilities
-
 from datetime import datetime, timedelta # for token expiry management
-
 from fastapi.security import OAuth2PasswordBearer  # token-based authentication system
-
-import bcrypt                           # A robust and modern password hashing library.
-
 from dotenv import load_dotenv
-
 import os
 
+# -------------------------------
+# LOAD ENVIRONMENT VARIABLES
+# -------------------------------
 load_dotenv() #reads .env file
 
 
@@ -44,17 +36,20 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # -------------------------------
 def get_password_hash(password: str) -> str:
     """
-    Hash the password securely using bcrypt.
-    bcrypt accepts up to 72 bytes, so we encode safely.
-    
-    """    
-    # password = password.encode("utf-8")[:72]
+    Hash a plain password securely using passlib (bcrypt).
+    Truncate password to 72 bytes to avoid bcrypt limit.
+    """
+    #convert to bytes and truncate to 72 bytes    
+    # safe_password = password.encode("utf-8")[:72]
     # return bcrypt.hashpw(password.encode('utf-8'), config)
     # print("DEBUG: Password length =", len(password))
     return pwd_context.hash(password)
 
 def verify_password(plain, hashed):
-    """Verify if the provided plain password matches the stored hash."""
+    """Verify if the provided plain password matches the stored hash.
+    Truncate to 72 bytes to match hashing truncation.
+    """
+    # safe_plain = plain.encode("utf-8")[:72]
 
     return pwd_context.verify(plain, hashed)
 
@@ -62,7 +57,11 @@ def verify_password(plain, hashed):
 # JWT (JSON Web Token) UTILS
 # -------------------------------
 def create_access_token(data: dict):
-    """Generate a JWT access token with expiration time."""
+    """
+    Create a JWT access token containing user data. 
+    Automatically sets the expiration time.
+    """
+
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
@@ -81,4 +80,4 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
         user = session.exec(select(User).where(User.username == username)).first()
         return user
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")     
